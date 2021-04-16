@@ -21,16 +21,17 @@ FCFSScheduler::FCFSScheduler(int slice) {
 }
 
 std::shared_ptr<SchedulingDecision> FCFSScheduler::get_next_thread() {
-    // TODO
-    return nullptr;
+    auto temp = std::make_shared<SchedulingDecision>();
+    temp->thread = fcfsQueue.front();
+    fcfsQueue.pop();
+    return temp;
 }
 
 void FCFSScheduler::add_to_ready_queue(std::shared_ptr<Thread> thread) {
-    // TODO
+    fcfsQueue.push(thread);
 }
 
 size_t FCFSScheduler::size() const {
-    // TODO
-    return 0;
+    return fcfsQueue.size();
 }
 #include "fcfs_algorithm.hpp"

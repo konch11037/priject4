@@ -7,6 +7,7 @@
 
 
 #include <memory>
+#include <queue>
 #include "../scheduling_algorithm.hpp"
 
 /*
@@ -28,7 +29,7 @@ public:
 
     // Add any member variables you may need.
 
-
+    std::queue<std::shared_ptr<Thread>> fcfsQueue;
     //==================================================
     //  Member functions
     //==================================================

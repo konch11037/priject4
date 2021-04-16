@@ -9,10 +9,11 @@
 
 Burst::Burst(BurstType type, int length)
 {
-    // TODO
+    this->burst_type = type;
+    this->length = length;
 }
 
 void Burst::update_time(int delta_t)
 {
-    // TODO
+    this->length = length - delta_t;
 }
