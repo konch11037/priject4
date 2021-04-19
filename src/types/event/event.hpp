@@ -75,6 +75,10 @@ public:
     Event(EventType type, unsigned int time, unsigned int event_num, std::shared_ptr<Thread> thread, std::shared_ptr<SchedulingDecision> sd):
             type(type), time(time), event_num(event_num), thread(thread), scheduling_decision(sd) {}
 
+
+    std::shared_ptr<Event> eventCopy(EventType typeTemp) {
+        return std::make_shared<Event>(typeTemp, this->time, this->event_num, this->thread, std::make_shared<SchedulingDecision>());
+    }
     /*
         ~Event():
             The class destructor.

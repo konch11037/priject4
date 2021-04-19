@@ -76,6 +76,7 @@ public:
     */
     bool empty() const { return size() == 0; }
 
+
     /*
         ~Scheduler():
             This is a virtual destructor, provided as a best practice. I do not think that

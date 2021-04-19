@@ -53,9 +53,12 @@ void Logger::print_state_transition(const std::shared_ptr<Event> event, ThreadSt
         Thread 0 in process 0 [INTERACTIVE]
         Transitioned from NEW to READY
     */
-
-    std::string message = fmt::format("Transitioned from {} to {}", STATE_MAP[before_state], STATE_MAP[after_state]);
-
+    std::string message;
+    if (event->type == EventType::DISPATCHER_INVOKED && event->scheduling_decision != nullptr) {
+            message = event->scheduling_decision->explanation;
+    } else {
+        message = fmt::format("Transitioned from {} to {}", STATE_MAP[before_state], STATE_MAP[after_state]);
+    }
     print_verbose(event, event->thread, message);
 }
 
@@ -67,7 +70,8 @@ void Logger::print_verbose(const std::shared_ptr<Event> event, std::shared_ptr<T
 
     std::string verbose_message = fmt::format("At time {}:\n", event->time);
     verbose_message += fmt::format("    {}\n", EVENT_MAP[event->type]);
-    verbose_message += fmt::format("    Thread {} in process {} [{}]\n", thread->thread_id, thread->process_id, PROCESS_PRIORITY_MAP[thread->priority]);
+ //   verbose_message += fmt::format("    Thread {} in process {} [{}]\n", thread->thread_id, thread->process_id, PROCESS_PRIORITY_MAP[thread->priority]);
+    verbose_message += fmt::format( "    Process {} [{}]\n", thread->process_id, PROCESS_PRIORITY_MAP[thread->priority]);
     verbose_message += fmt::format("    {}\n\n", message);
 
     std::cout << verbose_message;

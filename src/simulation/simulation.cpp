@@ -98,51 +98,53 @@ void Simulation::handle_process_arrived(const std::shared_ptr<Event> event)
 {
     event->thread->set_state(READY, event->time);
     if (this->active_thread == NULL) {
-        event->type = DISPATCHER_INVOKED;
-        events.push(event);
+        events.push(event->eventCopy(DISPATCHER_INVOKED));
     }
-    this->scheduler->add_to_ready_queue(event->thread);
+    else this->scheduler->add_to_ready_queue(event->thread);
 
 
 }
 
 void Simulation::handle_dispatch_completed(const std::shared_ptr<Event> event)
 {
-    // Adding Overhead
-    event->time += process_switch_overhead;
-
+    auto newEvent = event->eventCopy(event->type);
     // If timeslice is less than burst time, complete a burst
     if (scheduler->time_slice < event->thread->get_next_burst(CPU)->length) {
 
         //If the process is on the last burst, complete the process
         if (event->thread->bursts.size() <= 1) {
-            event->thread->set_state(READY, event->time);
-            event->type = PROCESS_COMPLETED;
+            event->thread->set_state(RUNNING, event->time);
+            newEvent = event->eventCopy(PROCESS_COMPLETED);
+            newEvent->time += newEvent->thread->get_next_burst(CPU)->length;
         }
 
         // Send the process to complete a CPU/IO burst pair
         else {
             event->thread->set_state(RUNNING, event->time);
-            event->type = CPU_BURST_COMPLETED;
+            newEvent = event->eventCopy(CPU_BURST_COMPLETED);
+            newEvent->time += newEvent->thread->get_next_burst(CPU)->length;
         }
     }
 
     //TODO HANDLE TIMESLICE/BURST logic
-    events.push(event);
+    events.push(newEvent);
 
 }
 
 void Simulation::handle_cpu_burst_completed(const std::shared_ptr<Event> event)
 {
     // Calc the CPU burst time and 'advace the clock' to that point
-    event->time += event->thread->get_next_burst(CPU)->length;
     event->thread->set_state(BLOCKED, event->time);
+
     event->thread->pop_next_burst(CPU);
 
     //Send the current process to BLOCKED and free the CPU
-    event->type = IO_BURST_COMPLETED;
-    events.push(event);
-    this->active_thread = NULL;
+    auto newEvent = event->eventCopy(IO_BURST_COMPLETED);
+    newEvent->time += newEvent->thread->get_next_burst(IO)->length;
+//    newEvent->time += newEvent->thread->get_next_burst(CPU)->length;
+//    newEvent->thread->pop_next_burst(CPU);
+//    newEvent->thread->set_state(BLOCKED, newEvent->time);
+    events.push(newEvent);
 
     //See if there is events on the ready cue, and create and event with those threads
     if (!scheduler->empty()) {
@@ -155,19 +157,17 @@ void Simulation::handle_cpu_burst_completed(const std::shared_ptr<Event> event)
 
 void Simulation::handle_io_burst_completed(const std::shared_ptr<Event> event)
 {
-    event->time += event->thread->get_next_burst(IO)->length;
+    this->active_thread = NULL;
     event->thread->pop_next_burst(IO);
     event->thread->set_state(READY, event->time);
-    event->type = DISPATCHER_INVOKED;
-    this->scheduler->add_to_ready_queue(event->thread);
-    events.push(event);
+    auto newEvent = event->eventCopy(DISPATCHER_INVOKED);
+    this->scheduler->add_to_ready_queue(newEvent->thread);
 
 }
 
 void Simulation::handle_process_completed(const std::shared_ptr<Event> event)
 {
     this->active_thread = NULL;
-
     //See if there is events on the ready cue, and create and event with those threads
     if (!scheduler->empty()) {
         std::shared_ptr<SchedulingDecision> fromReadyThread = scheduler->get_next_thread();
@@ -176,7 +176,7 @@ void Simulation::handle_process_completed(const std::shared_ptr<Event> event)
         this->event_num++;
     }
 
-    event->thread->set_state(EXIT, event->time + event->thread->pop_next_burst(CPU)->length);
+    event->thread->set_state(EXIT, event->time);
 
 }
 
@@ -188,11 +188,18 @@ void Simulation::handle_process_preempted(const std::shared_ptr<Event> event)
 
 void Simulation::handle_dispatcher_invoked(const std::shared_ptr<Event> event)
 {
-    event->type = PROCESS_DISPATCH_COMPLETED;
+    auto newEvent = event->eventCopy(PROCESS_DISPATCH_COMPLETED);
+    // Adding overhead
+    newEvent->time += process_switch_overhead;
+
+    //create scheduler event explanation
+    std::to_string(scheduler->size()+1);
+    event->scheduling_decision->explanation = "Selected from " + std::to_string(scheduler->size()+1)
+            + " processes. Will run to completion of burst.";
     if (flags.scheduler == "FCFS") {
         active_thread = event->thread;
     }
-    events.push(event);
+    events.push(newEvent);
 }
 
 //==============================================================================
