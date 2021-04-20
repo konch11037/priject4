@@ -97,7 +97,7 @@ void Simulation::run()
 void Simulation::handle_process_arrived(const std::shared_ptr<Event> event)
 {
     event->thread->set_state(READY, event->time);
-    if (this->active_thread == NULL) {
+    if (this->active_thread == NULL && scheduler->empty()) {
         events.push(event->eventCopy(DISPATCHER_INVOKED));
     }
     else this->scheduler->add_to_ready_queue(event->thread);
@@ -246,8 +246,15 @@ void Simulation::handle_dispatcher_invoked(const std::shared_ptr<Event> event)
 
     active_thread = event->thread;
     //create scheduler event explanation
-    event->scheduling_decision->explanation = "Selected from " + std::to_string(scheduler->size()+1)
-            + " processes. Will run to completion of burst.";
+    if (flags.scheduler == "FCFS") {
+        event->scheduling_decision->explanation = "Selected from " + std::to_string(scheduler->size() + 1)
+                                                  + " processes. Will run to completion of burst.";
+    }
+    else if (flags.scheduler == "RR") {
+        event->scheduling_decision->explanation = "Selected from " + std::to_string(scheduler->size() + 1)
+                + " processes. Will run for at most " + std::to_string(scheduler->time_slice) + " ticks.";
+
+    }
     events.push(newEvent);
 }
 
