@@ -11,9 +11,10 @@
 
 void Thread::set_ready(int time) {
     ThreadState temp = current_state;
-    if (current_state == BLOCKED) {
-        io_time += time - state_change_time;
-    }
+
+//    if (current_state == BLOCKED) {
+//        service_time += time - state_change_time;
+//    }
     current_state = READY;
     previous_state = temp;
     state_change_time = time;
@@ -33,7 +34,7 @@ void Thread::set_running(int time) {
 
 void Thread::set_blocked(int time) {
     ThreadState temp = current_state;
-    service_time += time - state_change_time;
+    //io_time += time - state_change_time;
     current_state = BLOCKED;
     previous_state = temp;
     state_change_time = time;
@@ -41,7 +42,6 @@ void Thread::set_blocked(int time) {
 
 void Thread::set_finished(int time) {
     ThreadState temp = current_state;
-    service_time += time - state_change_time;
     current_state = EXIT;
     previous_state = temp;
     state_change_time = time;
@@ -81,6 +81,9 @@ std::shared_ptr<Burst> Thread::get_next_burst(BurstType type) {
 std::shared_ptr<Burst> Thread::pop_next_burst(BurstType type) {
     if (bursts.front()->burst_type == type) {
         std::shared_ptr<Burst> temp = bursts.front();
+        if (type == CPU) service_time += temp->length;
+        if (type == IO) io_time += temp->length;
+
         bursts.pop();
         return temp;
     }

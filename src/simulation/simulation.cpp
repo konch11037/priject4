@@ -189,8 +189,9 @@ void Simulation::handle_process_completed(const std::shared_ptr<Event> event)
         this->events.push(std::make_shared<Event>(DISPATCHER_INVOKED, event->time, this->event_num, fromReadyThread->thread, fromReadyThread));
         this->event_num++;
     }
-
+    event->thread->pop_next_burst(CPU);
     event->thread->set_state(EXIT, event->time);
+
 
      // Figure where to put system stats
     std::shared_ptr<Thread> thready = event->thread;
@@ -209,8 +210,8 @@ void Simulation::handle_process_completed(const std::shared_ptr<Event> event)
             id = 3;
             break;
     }
-    system_stats.avg_thread_turnaround_times[id] = thready->turnaround_time();
-    system_stats.avg_thread_response_times[id] = thready->response_time();
+    system_stats.avg_thread_turnaround_times[id] += thready->turnaround_time();
+    system_stats.avg_thread_response_times[id] += thready->response_time();
     system_stats.thread_counts[id]++;
 }
 
@@ -223,6 +224,7 @@ void Simulation::handle_process_preempted(const std::shared_ptr<Event> event)
     event->thread->set_state(READY, event->time);
     auto newEvent = event->eventCopy(DISPATCHER_INVOKED);
     newEvent->thread->bursts.front()->update_time(scheduler->time_slice);
+    newEvent->thread->service_time += scheduler->time_slice;
     scheduler->add_to_ready_queue(newEvent->thread);
 
     //See if there is events on the ready cue, and create and event with those threads
@@ -266,9 +268,12 @@ SystemStats Simulation::calculate_statistics()
 
     // Calculate averages for the process types
     for (int i = 0; i < 4; ++i) {
-        system_stats.avg_thread_response_times[i] = system_stats.avg_thread_response_times[i] / system_stats.thread_counts[i];
-        system_stats.avg_thread_turnaround_times[i] = system_stats.avg_thread_turnaround_times[i] / system_stats.thread_counts[i];
-
+        if (system_stats.thread_counts[i] != 0) {
+            system_stats.avg_thread_response_times[i] =
+                    system_stats.avg_thread_response_times[i] / system_stats.thread_counts[i];
+            system_stats.avg_thread_turnaround_times[i] =
+                    system_stats.avg_thread_turnaround_times[i] / system_stats.thread_counts[i];
+        }
     }
     return this->system_stats;
 }
