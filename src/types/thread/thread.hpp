@@ -28,7 +28,7 @@ public:
     //==================================================
     //  Member variables
     //==================================================
-
+    bool startTimeFlag = true;
     /*
         thread_id:
             The thread's ID. These are only unique within the context of a process.

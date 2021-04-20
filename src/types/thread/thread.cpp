@@ -11,6 +11,9 @@
 
 void Thread::set_ready(int time) {
     ThreadState temp = current_state;
+    if (current_state == BLOCKED) {
+        io_time += time - state_change_time;
+    }
     current_state = READY;
     previous_state = temp;
     state_change_time = time;
@@ -19,6 +22,10 @@ void Thread::set_ready(int time) {
 
 void Thread::set_running(int time) {
     ThreadState temp = current_state;
+    if (startTimeFlag) {
+        start_time = time;
+        startTimeFlag = false;
+    }
     current_state = RUNNING;
     previous_state = temp;
     state_change_time = time;
@@ -26,6 +33,7 @@ void Thread::set_running(int time) {
 
 void Thread::set_blocked(int time) {
     ThreadState temp = current_state;
+    service_time += time - state_change_time;
     current_state = BLOCKED;
     previous_state = temp;
     state_change_time = time;
@@ -33,9 +41,11 @@ void Thread::set_blocked(int time) {
 
 void Thread::set_finished(int time) {
     ThreadState temp = current_state;
+    service_time += time - state_change_time;
     current_state = EXIT;
     previous_state = temp;
     state_change_time = time;
+    end_time = time;
 }
 
 int Thread::response_time() const {

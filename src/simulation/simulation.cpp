@@ -192,6 +192,26 @@ void Simulation::handle_process_completed(const std::shared_ptr<Event> event)
 
     event->thread->set_state(EXIT, event->time);
 
+     // Figure where to put system stats
+    std::shared_ptr<Thread> thready = event->thread;
+    int id = 0;
+    switch (thready->priority) {
+        case SYSTEM:
+            id = 0;
+            break;
+        case INTERACTIVE:
+            id = 1;
+            break;
+        case NORMAL:
+            id = 2;
+            break;
+        case BATCH:
+            id = 3;
+            break;
+    }
+    system_stats.avg_thread_turnaround_times[id] = thready->turnaround_time();
+    system_stats.avg_thread_response_times[id] = thready->response_time();
+    system_stats.thread_counts[id]++;
 }
 
 void Simulation::handle_process_preempted(const std::shared_ptr<Event> event)
@@ -236,8 +256,20 @@ void Simulation::handle_dispatcher_invoked(const std::shared_ptr<Event> event)
 SystemStats Simulation::calculate_statistics()
 {
     //todo
+    // Calculate times
     system_stats.total_idle_time = system_stats.total_time - system_stats.service_time - system_stats.dispatch_time;
+    system_stats.total_cpu_time = system_stats.total_time - system_stats.total_idle_time;
 
+    // Calculate percentages
+    system_stats.cpu_utilization = 100 * float(system_stats.total_cpu_time) / system_stats.total_time;
+    system_stats.cpu_efficiency = 100 * float(system_stats.total_cpu_time - system_stats.dispatch_time) / system_stats.total_time;
+
+    // Calculate averages for the process types
+    for (int i = 0; i < 4; ++i) {
+        system_stats.avg_thread_response_times[i] = system_stats.avg_thread_response_times[i] / system_stats.thread_counts[i];
+        system_stats.avg_thread_turnaround_times[i] = system_stats.avg_thread_turnaround_times[i] / system_stats.thread_counts[i];
+
+    }
     return this->system_stats;
 }
 
