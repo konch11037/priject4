@@ -116,6 +116,7 @@ void Simulation::handle_dispatch_completed(const std::shared_ptr<Event> event)
             event->thread->set_state(RUNNING, event->time);
             newEvent = event->eventCopy(PROCESS_COMPLETED);
             newEvent->time += newEvent->thread->get_next_burst(CPU)->length;
+            system_stats.service_time += newEvent->thread->get_next_burst(CPU)->length;
         }
 
         // Send the process to complete a CPU/IO burst pair
@@ -123,12 +124,14 @@ void Simulation::handle_dispatch_completed(const std::shared_ptr<Event> event)
             event->thread->set_state(RUNNING, event->time);
             newEvent = event->eventCopy(CPU_BURST_COMPLETED);
             newEvent->time += newEvent->thread->get_next_burst(CPU)->length;
+            system_stats.service_time += newEvent->thread->get_next_burst(CPU)->length;
         }
     }
     else {
         event->thread->set_state(RUNNING,event->time);
         newEvent = event->eventCopy(PROCESS_PREEMPTED);
         newEvent->time += scheduler->time_slice;
+        system_stats.service_time += scheduler->time_slice;
     }
 
     events.push(newEvent);
@@ -145,9 +148,8 @@ void Simulation::handle_cpu_burst_completed(const std::shared_ptr<Event> event)
     //Send the current process to BLOCKED and free the CPU
     auto newEvent = event->eventCopy(IO_BURST_COMPLETED);
     newEvent->time += newEvent->thread->get_next_burst(IO)->length;
-//    newEvent->time += newEvent->thread->get_next_burst(CPU)->length;
-//    newEvent->thread->pop_next_burst(CPU);
-//    newEvent->thread->set_state(BLOCKED, newEvent->time);
+    system_stats.io_time += newEvent->thread->get_next_burst(IO)->length;
+
     events.push(newEvent);
 
     //See if there is events on the ready cue, and create and event with those threads
@@ -218,6 +220,7 @@ void Simulation::handle_dispatcher_invoked(const std::shared_ptr<Event> event)
     auto newEvent = event->eventCopy(PROCESS_DISPATCH_COMPLETED);
     // Adding overhead
     newEvent->time += process_switch_overhead;
+    system_stats.dispatch_time += process_switch_overhead;
 
     active_thread = event->thread;
     //create scheduler event explanation
@@ -232,7 +235,9 @@ void Simulation::handle_dispatcher_invoked(const std::shared_ptr<Event> event)
 
 SystemStats Simulation::calculate_statistics()
 {
-    // TODO: Implement functionality for calculating the simulation statistics
+    //todo
+    system_stats.total_idle_time = system_stats.total_time - system_stats.service_time - system_stats.dispatch_time;
+
     return this->system_stats;
 }
 
