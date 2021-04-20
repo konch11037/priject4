@@ -109,7 +109,7 @@ void Simulation::handle_dispatch_completed(const std::shared_ptr<Event> event)
 {
     auto newEvent = event->eventCopy(event->type);
     // If timeslice is less than burst time, complete a burst
-    if (scheduler->time_slice >= event->thread->get_next_burst(CPU)->length) {
+    if (scheduler->time_slice >= event->thread->get_next_burst(CPU)->length || flags.scheduler =="FCFS") {
 
         //If the process is on the last burst, complete the process
         if (event->thread->bursts.size() <= 1) {
