@@ -109,7 +109,7 @@ void Simulation::handle_dispatch_completed(const std::shared_ptr<Event> event)
 {
     auto newEvent = event->eventCopy(event->type);
     // If timeslice is less than burst time, complete a burst
-    if (scheduler->time_slice < event->thread->get_next_burst(CPU)->length) {
+    if (scheduler->time_slice >= event->thread->get_next_burst(CPU)->length) {
 
         //If the process is on the last burst, complete the process
         if (event->thread->bursts.size() <= 1) {
@@ -125,8 +125,12 @@ void Simulation::handle_dispatch_completed(const std::shared_ptr<Event> event)
             newEvent->time += newEvent->thread->get_next_burst(CPU)->length;
         }
     }
+    else {
+        event->thread->set_state(RUNNING,event->time);
+        newEvent = event->eventCopy(PROCESS_PREEMPTED);
+        newEvent->time += scheduler->time_slice;
+    }
 
-    //TODO HANDLE TIMESLICE/BURST logic
     events.push(newEvent);
 
 }
@@ -153,6 +157,7 @@ void Simulation::handle_cpu_burst_completed(const std::shared_ptr<Event> event)
         this->events.push(std::make_shared<Event>(DISPATCHER_INVOKED, event->time, this->event_num, fromReadyThread->thread, fromReadyThread));
         this->event_num++;
     }
+
 }
 
 void Simulation::handle_io_burst_completed(const std::shared_ptr<Event> event)
@@ -163,6 +168,13 @@ void Simulation::handle_io_burst_completed(const std::shared_ptr<Event> event)
     auto newEvent = event->eventCopy(DISPATCHER_INVOKED);
     this->scheduler->add_to_ready_queue(newEvent->thread);
 
+    //See if there is events on the ready cue, and create and event with those threads
+    if (scheduler->size() == 1 && events.empty()) {
+        std::shared_ptr<SchedulingDecision> fromReadyThread = scheduler->get_next_thread();
+        // Making shared pointers is not worth the effort
+        this->events.push(std::make_shared<Event>(DISPATCHER_INVOKED, event->time, this->event_num, fromReadyThread->thread, fromReadyThread));
+        this->event_num++;
+    }
 }
 
 void Simulation::handle_process_completed(const std::shared_ptr<Event> event)
@@ -182,8 +194,23 @@ void Simulation::handle_process_completed(const std::shared_ptr<Event> event)
 
 void Simulation::handle_process_preempted(const std::shared_ptr<Event> event)
 {
-    // TODO: Handle this event properly
-    std::cout << "TODO: Handle process preempted event properly\n\n";
+    // Goals:
+    // decrease the thread burst by the time slice
+    // add the event thread to the ready cqueue
+    this->active_thread = NULL;
+    event->thread->set_state(READY, event->time);
+    auto newEvent = event->eventCopy(DISPATCHER_INVOKED);
+    newEvent->thread->bursts.front()->update_time(scheduler->time_slice);
+    scheduler->add_to_ready_queue(newEvent->thread);
+
+    //See if there is events on the ready cue, and create and event with those threads
+    if (!scheduler->empty()) {
+        std::shared_ptr<SchedulingDecision> fromReadyThread = scheduler->get_next_thread();
+        // Making shared pointers is not worth the effort
+        this->events.push(std::make_shared<Event>(DISPATCHER_INVOKED, event->time, this->event_num, fromReadyThread->thread, fromReadyThread));
+        this->event_num++;
+    }
+
 }
 
 void Simulation::handle_dispatcher_invoked(const std::shared_ptr<Event> event)
@@ -192,13 +219,10 @@ void Simulation::handle_dispatcher_invoked(const std::shared_ptr<Event> event)
     // Adding overhead
     newEvent->time += process_switch_overhead;
 
+    active_thread = event->thread;
     //create scheduler event explanation
-    std::to_string(scheduler->size()+1);
     event->scheduling_decision->explanation = "Selected from " + std::to_string(scheduler->size()+1)
             + " processes. Will run to completion of burst.";
-    if (flags.scheduler == "FCFS") {
-        active_thread = event->thread;
-    }
     events.push(newEvent);
 }
 

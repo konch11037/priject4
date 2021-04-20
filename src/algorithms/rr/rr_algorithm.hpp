@@ -30,6 +30,7 @@ public:
 
     // Add any member variables you may need.
 
+    std::queue<std::shared_ptr<Thread>> rrQueue;
     //==================================================
     //  Member functions
     //==================================================

@@ -12,21 +12,24 @@
 */
 
 RRScheduler::RRScheduler(int slice) {
-    // TODO
+    if (slice > 0) time_slice = slice;
+    else time_slice = 3;
 }
 
 std::shared_ptr<SchedulingDecision> RRScheduler::get_next_thread() {
-    // TODO
-    return nullptr;
+    auto temp = std::make_shared<SchedulingDecision>();
+    temp->thread = rrQueue.front();
+    rrQueue.pop();
+    return temp;
+
 }
 
 void RRScheduler::add_to_ready_queue(std::shared_ptr<Thread> thread) {
-    // TODO
+    rrQueue.push(thread);
 }
 
 size_t RRScheduler::size() const {
-    // TODO
-    return 0;
+    return rrQueue.size();
 }
 
 #include "rr_algorithm.hpp"
